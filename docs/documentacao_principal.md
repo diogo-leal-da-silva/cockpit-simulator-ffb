@@ -1,1 +1,1 @@
-## Na presente pasta se encontra o documento informativo sobre as motivações e objetivos do projeto, com a apresentação do projeto de comunicação e modelagem de dados. A discussão final virá com os percausos da ideia, suas vantagens e limitações.
+## Na presente pasta se encontra o documento informativo sobre as motivações e objetivos do projeto, com a apresentação do projeto de comunicação e modelagem de dados, além da explicação do funcionamento base do driver MKS/Odrive. A discussão final virá com os percausos da ideia, suas vantagens e limitações.
