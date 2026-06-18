@@ -1,0 +1,15 @@
+Para adicionar um novo jogo ao software do cockpit, primeiro deve ser criado um novo sketch do Arduino com a lógica e a telemetria específicas desse jogo. O arquivo .ino deve ser colocado dentro da pasta sketches, preferencialmente em uma subpasta com o nome do jogo.
+
+Depois disso, o jogo precisa ser incluído no arquivo config.json, informando o nome que aparecerá na interface, o caminho do sketch e o FQBN da placa Arduino Leonardo.
+
+Exemplo:
+
+{
+  "game": "Novo Jogo",
+  "sketch": "sketches/NovoJogo/NovoJogo.ino",
+  "fqbn": "arduino:avr:leonardo"
+}
+
+Também é possível adicionar o sketch diretamente pelo botão Adicionar sketch do programa. Nesse caso, basta selecionar o arquivo .ino, informar o nome do jogo e salvar. Após isso, o novo perfil aparecerá na lista da interface e poderá ser compilado e enviado ao Arduino Leonardo pelo botão Compilar e enviar.
+
+Caso o jogo utilize telemetria, também será necessário configurar no SimHub as propriedades correspondentes e manter a ordem dos dados exatamente igual àquela esperada pelo novo código do Arduino.
