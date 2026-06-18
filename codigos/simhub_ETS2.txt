@@ -1,0 +1,260 @@
+var velocidade = $prop('DataCorePlugin.GameData.NewData.SpeedKmh');
+var rpm = $prop('CarSettings_CurrentDisplayedRPMPercent');
+var fuel = $prop('DataCorePlugin.Computed.Fuel_Percent');
+var gear = $prop('DataCorePlugin.GameData.NewData.Gear');
+
+//Dados corretos encontrados no SimHub:
+var tempoJogo = $prop('DataCorePlugin.GameRawData.CommonValues.GameTime.Time');
+var tempoDescanso = $prop('DataCorePlugin.GameRawData.CommonValues.NextRestStopTime.Time');
+var tempoRestanteEntrega = $prop('DataCorePlugin.GameRawData.JobValues.RemainingDeliveryTime.Time');
+
+//Dados de navegação até o local da entrega:
+var tempoAteEntrega = $prop('DataCorePlugin.GameRawData.Job.NavigationTimeLeft');
+var distanciaRestante = $prop('DataCorePlugin.GameRawData.Job.NavigationDistanceLeft');
+
+//Tratamento de velocidade:
+if (velocidade == null || velocidade === '') {
+  velocidade = 0;
+}
+
+//Tratamento de RPM:
+if (rpm == null || rpm === '') {
+  rpm = 0;
+}
+
+//Tratamento de gasolina:
+if (fuel == null || fuel === '' || isNaN(fuel)) {
+  fuel = 0;
+}
+
+//Tratamento de marcha:
+if (gear == null || gear === '') {
+  gear = 'N';
+}
+
+if (gear == 0 || gear == '0') {
+  gear = 'N';
+}
+
+if (!isNaN(gear) && Number(gear) < 0) {
+  gear = 'R';
+}
+
+//Função para colocar zero na frente:
+function doisDigitos(valor) {
+  valor = Math.floor(Number(valor));
+
+  if (valor < 10) {
+    return '0' + valor;
+  }
+
+  return String(valor);
+}
+
+//Função para transformar segundos em horas e minutos:
+//Exemplo: 21257.28 -> 5h54
+function converterSegundos(valor) {
+  if (valor == null || valor === '') {
+    return '--';
+  }
+
+  valor = String(valor).replace(',', '.');
+
+  var numero = Number(valor);
+
+  if (isNaN(numero)) {
+    return '--';
+  }
+
+  var segundos = numero;
+  var horas = Math.floor(segundos / 3600);
+  var minutos = Math.floor((segundos % 3600) / 60);
+
+  return horas + 'h' + doisDigitos(minutos);
+}
+
+//Função para converter texto HH:MM:SS em horas e minutos:
+//Exemplo: 15:19:00 -> 15h19
+function converterTempoTexto(valor) {
+  if (valor == null || valor === '') {
+    return '--';
+  }
+
+  valor = String(valor).trim();
+
+  //Caso venha no formato 0.10:19:00, pega só a parte depois do ponto.
+  if (valor.indexOf('.') >= 0) {
+    var partesDia = valor.split('.');
+    valor = partesDia[partesDia.length - 1];
+  }
+
+  var partes = valor.split(':');
+
+  if (partes.length < 2) {
+    return valor;
+  }
+
+  var horas = Number(partes[0]);
+  var minutos = Number(partes[1]);
+
+  if (isNaN(horas) || isNaN(minutos)) {
+    return '--';
+  }
+
+  return horas + 'h' + doisDigitos(minutos);
+}
+
+//Função para transformar GameTime.Time em dia da semana e horário:
+//Exemplo: 38.16:00:00 -> QUI 16:00
+function converterTempoJogo(valor) {
+  if (valor == null || valor === '') {
+    return {
+      dia: '--',
+      hora: '--:--'
+    };
+  }
+
+  valor = String(valor).trim();
+
+  var partesDia = valor.split('.');
+
+  if (partesDia.length < 2) {
+    return {
+      dia: '--',
+      hora: '--:--'
+    };
+  }
+
+  var dias = Number(partesDia[0]);
+  var horario = partesDia[1];
+
+  var partesHorario = horario.split(':');
+
+  if (partesHorario.length < 2) {
+    return {
+      dia: '--',
+      hora: '--:--'
+    };
+  }
+
+  var horas = Number(partesHorario[0]);
+  var minutos = Number(partesHorario[1]);
+
+  if (isNaN(dias) || isNaN(horas) || isNaN(minutos)) {
+    return {
+      dia: '--',
+      hora: '--:--'
+    };
+  }
+
+  //Pelo seu teste: 38.16:00:00 = quinta 16:00.
+  var nomesDias = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+
+  var indiceDia = dias % 7;
+
+  return {
+    dia: nomesDias[indiceDia],
+    hora: doisDigitos(horas) + ':' + doisDigitos(minutos)
+  };
+}
+
+//Função para transformar tempo HH:MM:SS em porcentagem de sono:
+//Exemplo: 10:19:00 -> pouco sono.
+//11h restantes = 0%.
+//0h restantes = 100%.
+function calcularSono(valor) {
+  if (valor == null || valor === '') {
+    return 0;
+  }
+
+  valor = String(valor).trim();
+
+  //Caso venha no formato 0.10:19:00, pega só a parte depois do ponto.
+  if (valor.indexOf('.') >= 0) {
+    var partesDia = valor.split('.');
+    valor = partesDia[partesDia.length - 1];
+  }
+
+  var partes = valor.split(':');
+
+  if (partes.length < 2) {
+    return 0;
+  }
+
+  var horas = Number(partes[0]);
+  var minutos = Number(partes[1]);
+
+  if (isNaN(horas) || isNaN(minutos)) {
+    return 0;
+  }
+
+  var horasRestantes = horas + (minutos / 60.0);
+
+  var sono = 100 - Math.round((horasRestantes / 11.0) * 100);
+
+  if (sono < 0) {
+    sono = 0;
+  }
+
+  if (sono > 100) {
+    sono = 100;
+  }
+
+  return sono;
+}
+
+//Horário atual do jogo:
+var atual = converterTempoJogo(tempoJogo);
+var dataAtual = atual.dia;
+var horaAtual = atual.hora;
+
+//Tempo restante até o prazo da entrega:
+var dataEntrega = '';
+var horaEntrega = converterTempoTexto(tempoRestanteEntrega);
+
+//Tempo até o local da entrega:
+var tempoEntregaTexto = converterSegundos(tempoAteEntrega);
+
+//Distância restante:
+if (distanciaRestante == null || distanciaRestante === '') {
+  distanciaRestante = 0;
+}
+
+if (!isNaN(distanciaRestante)) {
+  distanciaRestante = Math.round(Number(distanciaRestante) / 1000) + 'km';
+} else {
+  distanciaRestante = String(distanciaRestante);
+}
+
+//Sono/cansaço:
+var sono = calcularSono(tempoDescanso);
+
+//Corta textos grandes:
+function cortar(valor, tamanho) {
+  valor = String(valor);
+
+  if (valor.length > tamanho) {
+    return valor.substring(0, tamanho);
+  }
+
+  return valor;
+}
+
+dataAtual = cortar(dataAtual, 5);
+horaAtual = cortar(horaAtual, 5);
+dataEntrega = cortar(dataEntrega, 5);
+horaEntrega = cortar(horaEntrega, 8);
+tempoEntregaTexto = cortar(tempoEntregaTexto, 8);
+distanciaRestante = cortar(distanciaRestante, 7);
+
+return Math.round(velocidade) + ';' +
+       Math.round(rpm) + ';' +
+       Math.round(fuel) + ';' +
+       gear + ';' +
+       dataAtual + ';' +
+       horaAtual + ';' +
+       dataEntrega + ';' +
+       horaEntrega + ';' +
+       tempoEntregaTexto + ';' +
+       distanciaRestante + ';' +
+       Math.round(sono) + '\n';

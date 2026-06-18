@@ -1,0 +1,114 @@
+var velocidade = $prop('DataCorePlugin.GameData.NewData.SpeedKmh');
+var rpm = $prop('CarSettings_CurrentDisplayedRPMPercent');
+
+var totalLaps = $prop('DataCorePlugin.GameData.TotalLaps');
+var completedLaps = $prop('DataCorePlugin.GameRawData.CompletedLapsInRace');
+
+var bestLapRace = $prop('DataCorePlugin.GameData.BestLapTime');
+var myBestLap = $prop('PersistantTrackerPlugin.EstimatedLapTime_AllTimeBestBased');
+
+//Tratamento de velocidade:
+if (velocidade == null || velocidade === '') {
+  velocidade = 0;
+}
+
+//Tratamento de RPM:
+if (rpm == null || rpm === '') {
+  rpm = 0;
+}
+
+//Tratamento de voltas:
+if (totalLaps == null || totalLaps === '' || isNaN(totalLaps)) {
+  totalLaps = 0;
+}
+
+if (completedLaps == null || completedLaps === '' || isNaN(completedLaps)) {
+  completedLaps = 0;
+}
+
+//Volta atual:
+//Se CompletedLapsInRace começa em 0, a volta atual é completed + 1.
+var voltaAtual = Number(completedLaps) + 1;
+var voltaTotal = Number(totalLaps);
+
+if (voltaTotal > 0 && voltaAtual > voltaTotal) {
+  voltaAtual = voltaTotal;
+}
+
+if (voltaTotal <= 0) {
+  voltaAtual = 0;
+  voltaTotal = 0;
+}
+
+//Função para colocar zero na frente:
+function doisDigitos(valor) {
+  valor = Math.floor(Number(valor));
+
+  if (valor < 10) {
+    return '0' + valor;
+  }
+
+  return String(valor);
+}
+
+//Função para colocar três dígitos nos milésimos:
+function tresDigitos(valor) {
+  valor = Math.floor(Number(valor));
+
+  if (valor < 10) {
+    return '00' + valor;
+  }
+  else if (valor < 100) {
+    return '0' + valor;
+  }
+
+  return String(valor);
+}
+
+//Função para formatar tempo de volta:
+//Aceita tempo em segundos, milissegundos ou texto já formatado.
+function formatarTempoVolta(valor) {
+  if (valor == null || valor === '') {
+    return '--:--.---';
+  }
+
+  valor = String(valor).trim();
+
+  if (valor === '0' || valor === '0.0' || valor === '0.000') {
+    return '--:--.---';
+  }
+
+  //Se já vier com ":" ou ".", tenta manter como texto.
+  if (valor.indexOf(':') >= 0 && valor.indexOf('.') >= 0) {
+    return valor;
+  }
+
+  valor = valor.replace(',', '.');
+
+  var numero = Number(valor);
+
+  if (isNaN(numero) || numero <= 0) {
+    return '--:--.---';
+  }
+
+  //Se vier em milissegundos, exemplo 83456.
+  if (numero > 10000) {
+    numero = numero / 1000.0;
+  }
+
+  var minutos = Math.floor(numero / 60);
+  var segundos = Math.floor(numero % 60);
+  var milesimos = Math.floor((numero - Math.floor(numero)) * 1000);
+
+  return doisDigitos(minutos) + ':' + doisDigitos(segundos) + '.' + tresDigitos(milesimos);
+}
+
+bestLapRace = formatarTempoVolta(bestLapRace);
+myBestLap = formatarTempoVolta(myBestLap);
+
+return Math.round(velocidade) + ';' +
+       Math.round(rpm) + ';' +
+       Math.round(voltaAtual) + ';' +
+       Math.round(voltaTotal) + ';' +
+       bestLapRace + ';' +
+       myBestLap + '\n';
